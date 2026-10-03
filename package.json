@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/inline-css.js && node scripts/gen-blog-manifest.mjs && tsx scripts/og.ts && tsx scripts/sitemap.ts && node scripts/gen-rss.mjs",
+    "build": "tsx scripts/validate-content.ts && tsc -b && vite build && node scripts/inline-css.js && node scripts/gen-blog-manifest.mjs && tsx scripts/og.ts && tsx scripts/sitemap.ts && node scripts/gen-rss.mjs",
     "og:generate": "tsx scripts/og.ts",
     "generate:sitemap": "node scripts/gen-sitemap.mjs",
     "preview": "vite preview",
@@ -22,6 +22,7 @@
     "validate:jsonld": "tsx scripts/validate-jsonld.mjs",
     "check:links": "node scripts/check-links.mjs",
     "test:links": "vitest run tests/link-checker.test.mjs",
+    "validate:content": "tsx scripts/validate-content.ts",
     "prepare": "husky"
   },
   "dependencies": {

@@ -214,7 +214,7 @@ export default function Footer() {
         { label: t('footer.product.docs'), href: 'https://docs.usewraith.xyz' },
         { label: t('footer.product.demo'), href: 'https://demo.usewraith.xyz' },
         { label: t('footer.product.console'), href: 'https://console.usewraith.xyz' },
-        { label: t('footer.product.compare'), href: '#compare' },
+        { label: t('footer.product.compare'), href: '/#compare' },
         { label: t('footer.product.faq'), href: '/faq' },
         { label: t('footer.product.changelog'), href: 'https://docs.usewraith.xyz/changelog' },
       ],
