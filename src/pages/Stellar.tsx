@@ -284,15 +284,6 @@ export default function Stellar() {
                 >
                   Read Stellar docs
                 </a>
-                <a
-                  href="https://spectre.usewraith.xyz"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => track('cta_click', { source: 'stellar-spectre' })}
-                  className="flex h-12 items-center justify-center border border-outline-variant px-7 font-heading text-[13px] font-semibold uppercase tracking-[1.5px] text-primary transition-colors duration-150 hover:bg-surface-bright"
-                >
-                  Spectre on Stellar
-                </a>
               </div>
 
               {/* Value prop stats — matches Hero.tsx stat block */}
@@ -611,15 +602,6 @@ export default function Stellar() {
               className="flex h-12 items-center justify-center border border-outline-variant px-7 font-heading text-[13px] font-semibold uppercase tracking-[1.5px] text-primary transition-colors duration-150 hover:bg-surface-bright"
             >
               Read Stellar docs
-            </a>
-            <a
-              href="https://spectre.usewraith.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => track('cta_click', { source: 'stellar-spectre' })}
-              className="flex h-12 items-center justify-center border border-outline-variant px-7 font-heading text-[13px] font-semibold uppercase tracking-[1.5px] text-primary transition-colors duration-150 hover:bg-surface-bright"
-            >
-              Spectre on Stellar
             </a>
             <Link
               to="/"
