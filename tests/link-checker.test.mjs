@@ -274,34 +274,94 @@ describe('production link checker', () => {
 });
 
 describe('external requests', () => {
-  it('uses GET, follows redirects, and retries transient server failures', async () => {
+  it('uses GET with manual redirects and retries transient server failures', async () => {
     const fetchUrl = vi
       .fn()
       .mockResolvedValueOnce(new Response('', { status: 503 }))
       .mockResolvedValueOnce(new Response('', { status: 200 }));
+
     expect(await checkExternal('https://example.org/', fetchUrl)).toEqual({
       ok: true,
       status: 200,
     });
+
     expect(fetchUrl).toHaveBeenCalledTimes(2);
     expect(fetchUrl.mock.calls[0][1]).toMatchObject({
-      redirect: 'follow',
+      redirect: 'manual',
       signal: expect.any(AbortSignal),
     });
   });
 
   it('does not retry 404s and reports exhausted network failures', async () => {
     const fetchUrl = vi.fn().mockResolvedValue(new Response('', { status: 404 }));
+
     expect(await checkExternal('https://example.org/', fetchUrl)).toEqual({
       ok: false,
       status: 404,
     });
+
     expect(fetchUrl).toHaveBeenCalledTimes(1);
+
     fetchUrl.mockReset().mockRejectedValue(new Error('offline'));
+
     expect(await checkExternal('https://example.org/', fetchUrl)).toMatchObject({
       ok: false,
       status: 'network',
     });
+
     expect(fetchUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks private and link-local destinations before making a request', async () => {
+    const fetchUrl = vi.fn();
+
+    for (const url of [
+      'http://127.0.0.1/',
+      'http://10.0.0.1/',
+      'http://192.168.1.1/',
+      'http://169.254.169.254/',
+      'http://[::1]/',
+      'http://[fe80::1]/',
+    ]) {
+      const result = await checkExternal(url, fetchUrl);
+
+      expect(result).toMatchObject({
+        ok: false,
+        status: 'network',
+      });
+
+      expect(result.detail).toMatch(/Blocked private or link-local destination/);
+    }
+
+    expect(fetchUrl).not.toHaveBeenCalled();
+  });
+
+  it('blocks redirects to private and link-local destinations', async () => {
+    const fetchUrl = vi.fn().mockResolvedValueOnce(
+      new Response('', {
+        status: 302,
+        headers: {
+          location: 'http://169.254.169.254/latest/meta-data/',
+        },
+      }),
+    );
+
+    const resolveHost = vi.fn().mockResolvedValue([
+      {
+        address: '93.184.216.34',
+        family: 4,
+      },
+    ]);
+
+    const result = await checkExternal('https://example.org/', fetchUrl, resolveHost);
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: 'network',
+    });
+
+    expect(result.detail).toMatch(/Blocked private or link-local destination/);
+
+    expect(fetchUrl).toHaveBeenCalledTimes(1);
   });
 });

@@ -276,7 +276,7 @@ export default function Stellar() {
                   Try Stellar Demo
                 </a>
                 <a
-                  href="https://docs.usewraith.xyz/chains/stellar"
+                  href="https://docs.usewraith.xyz/sdk/chains/stellar"
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => track('cta_click', { source: 'stellar-docs' })}
@@ -595,7 +595,7 @@ export default function Stellar() {
               Try Stellar Demo
             </a>
             <a
-              href="https://docs.usewraith.xyz/chains/stellar"
+              href="https://docs.usewraith.xyz/sdk/chains/stellar"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => track('cta_click', { source: 'stellar-docs' })}

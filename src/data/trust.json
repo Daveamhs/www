@@ -23,6 +23,6 @@
     "eyebrow": "Reliability",
     "fallbackPercent": "99.95",
     "windowLabel": "Last 90 days",
-    "statusPageUrl": "https://status.usewraith.xyz"
+    "statusPageUrl": "/status"
   }
 }

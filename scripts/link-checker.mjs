@@ -1,9 +1,68 @@
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 import { JSDOM } from 'jsdom';
 
 export const SITE_URL = 'https://usewraith.xyz';
+function isPrivateOrLocalIp(address) {
+  const version = isIP(address);
 
+  if (version === 4) {
+    const parts = address.split('.').map(Number);
+    const [a, b] = parts;
+
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+
+  if (version === 6) {
+    const normalized = address.toLowerCase();
+
+    return (
+      normalized === '::' ||
+      normalized === '::1' ||
+      normalized.startsWith('fc') ||
+      normalized.startsWith('fd') ||
+      /^fe[89ab]/.test(normalized)
+    );
+  }
+
+  return false;
+}
+
+async function assertSafeExternalDestination(url, resolveHost = lookup) {
+  const parsed = new URL(url);
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error(`Unsafe external protocol: ${parsed.protocol}`);
+  }
+
+  const hostname = parsed.hostname.replace(/^\[|\]$/g, '');
+
+  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    throw new Error(`Blocked private or link-local destination: ${hostname}`);
+  }
+
+  if (isIP(hostname)) {
+    if (isPrivateOrLocalIp(hostname)) {
+      throw new Error(`Blocked private or link-local destination: ${hostname}`);
+    }
+    return;
+  }
+
+  const addresses = await resolveHost(hostname, { all: true, verbatim: true });
+
+  if (!addresses.length || addresses.some(({ address }) => isPrivateOrLocalIp(address))) {
+    throw new Error(`Blocked private or link-local destination: ${hostname}`);
+  }
+}
 export async function listFiles(directory, prefix = '') {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
@@ -47,24 +106,73 @@ export function validateAllowlist(entries, siteUrl = SITE_URL) {
 }
 
 // GET avoids false failures from sites that reject HEAD. Retry transient failures once.
-export async function checkExternal(url, fetchUrl = fetch) {
-  let result;
+export async function checkExternal(url, fetchUrl = fetch, resolveHost = lookup) {
+  const maxRedirects = 5;
+
   for (let attempt = 0; attempt < 2; attempt++) {
+    let currentUrl = url;
+
     try {
-      const response = await fetchUrl(url, {
-        redirect: 'follow',
-        signal: AbortSignal.timeout(10_000),
-        headers: { 'User-Agent': 'Wraith-Link-Checker/1.0' },
-      });
-      result = { status: response.status, ok: response.ok };
-      await response.body?.cancel();
+      for (let redirects = 0; redirects <= maxRedirects; redirects++) {
+        await assertSafeExternalDestination(currentUrl, resolveHost);
+
+        const response = await fetchUrl(currentUrl, {
+          redirect: 'manual',
+          signal: AbortSignal.timeout(10_000),
+          headers: { 'User-Agent': 'Wraith-Link-Checker/1.0' },
+        });
+
+        if (response.status >= 300 && response.status < 400) {
+          const location = response.headers.get('location');
+          await response.body?.cancel();
+
+          if (!location) {
+            return { status: response.status, ok: false };
+          }
+
+          if (redirects === maxRedirects) {
+            throw new Error('Too many redirects');
+          }
+
+          currentUrl = new URL(location, currentUrl).href;
+
+          // Validate the redirect destination before the next request.
+          await assertSafeExternalDestination(currentUrl, resolveHost);
+          continue;
+        }
+
+        const result = { status: response.status, ok: response.ok };
+        await response.body?.cancel();
+
+        if (result.ok || (result.status !== 429 && result.status < 500)) {
+          return result;
+        }
+
+        break;
+      }
     } catch (error) {
-      result = { status: 'network', ok: false, detail: error.message };
+      if (
+        error.message.startsWith('Blocked private or link-local destination:') ||
+        error.message.startsWith('Unsafe external protocol:')
+      ) {
+        return {
+          status: 'network',
+          ok: false,
+          detail: error.message,
+        };
+      }
+
+      if (attempt === 1) {
+        return {
+          status: 'network',
+          ok: false,
+          detail: error.message,
+        };
+      }
     }
-    if (result.ok || (result.status !== 'network' && result.status !== 429 && result.status < 500))
-      break;
   }
-  return result;
+
+  return { status: 'network', ok: false };
 }
 
 export async function checkBuild({

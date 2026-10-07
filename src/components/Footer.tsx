@@ -19,7 +19,7 @@ const acknowledgments = [
   { label: 'Drips', src: '/logos/drips-mark.svg' },
 ];
 
-const statusPageUrl = import.meta.env.VITE_STATUS_PAGE_URL || 'https://status.usewraith.xyz';
+const statusPageUrl = import.meta.env.VITE_STATUS_PAGE_URL || '/status';
 const statusApiUrl = import.meta.env.VITE_STATUS_API_URL || '';
 
 function normalizeStatus(payload: unknown): StatusState {
