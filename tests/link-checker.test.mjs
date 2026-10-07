@@ -274,13 +274,20 @@ describe('production link checker', () => {
 });
 
 describe('external requests', () => {
+  const resolvePublicHost = vi.fn().mockResolvedValue([
+    {
+      address: '93.184.216.34',
+      family: 4,
+    },
+  ]);
+
   it('uses GET with manual redirects and retries transient server failures', async () => {
     const fetchUrl = vi
       .fn()
       .mockResolvedValueOnce(new Response('', { status: 503 }))
       .mockResolvedValueOnce(new Response('', { status: 200 }));
 
-    expect(await checkExternal('https://example.org/', fetchUrl)).toEqual({
+    expect(await checkExternal('https://example.org/', fetchUrl, resolvePublicHost)).toEqual({
       ok: true,
       status: 200,
     });
@@ -295,7 +302,7 @@ describe('external requests', () => {
   it('does not retry 404s and reports exhausted network failures', async () => {
     const fetchUrl = vi.fn().mockResolvedValue(new Response('', { status: 404 }));
 
-    expect(await checkExternal('https://example.org/', fetchUrl)).toEqual({
+    expect(await checkExternal('https://example.org/', fetchUrl, resolvePublicHost)).toEqual({
       ok: false,
       status: 404,
     });
@@ -304,7 +311,7 @@ describe('external requests', () => {
 
     fetchUrl.mockReset().mockRejectedValue(new Error('offline'));
 
-    expect(await checkExternal('https://example.org/', fetchUrl)).toMatchObject({
+    expect(await checkExternal('https://example.org/', fetchUrl, resolvePublicHost)).toMatchObject({
       ok: false,
       status: 'network',
     });
@@ -346,14 +353,7 @@ describe('external requests', () => {
       }),
     );
 
-    const resolveHost = vi.fn().mockResolvedValue([
-      {
-        address: '93.184.216.34',
-        family: 4,
-      },
-    ]);
-
-    const result = await checkExternal('https://example.org/', fetchUrl, resolveHost);
+    const result = await checkExternal('https://example.org/', fetchUrl, resolvePublicHost);
 
     expect(result).toMatchObject({
       ok: false,
